@@ -1,3 +1,5 @@
+
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -7,7 +9,8 @@
 #include <sys/stat.h>
 #include <linux/limits.h>
 
-int debugPrint1 = 1;
+int debugPrint1 = 0;
+int debugPrint2 = 1;
 
 typedef struct linkedList {
     struct elt *head; 
@@ -64,6 +67,54 @@ void linkedListDestroy(struct linkedList *l, int t)
 	free(l);
 }
 
+void replace(struct linkedList *l, char *archiveFileName){
+  //https://stackoverflow.com/questions/174531/how-to-read-the-content-of-a-file-to-a-string-in-c
+  
+  FILE *f = fopen(archiveFileName, "r");
+  char c;
+ int  endOfFile = 0;
+  while(!feof(f))
+  {
+  
+ 
+    while((c = fgetc(f)) != '|')
+    {
+      if(c==EOF)
+      {
+        endOfFile= 1;
+        break;
+      }
+    }
+    if(endOfFile)
+    {
+      break;
+    }
+  
+    char *absolutePath = malloc(sizeof(char) * PATH_MAX);
+    int pathNameIndex=0;
+    while((c = fgetc(f)) != '\n')
+    {
+      absolutePath[pathNameIndex] = c;
+      pathNameIndex++;
+    }
+    
+    
+    
+    char *fileContents = malloc(sizeof(char) *8192);
+    int contentIndex = 0;
+    while((c = fgetc(f) != '|'))
+    {}
+
+    while((c = fgetc(f)) != '\n')
+    {
+      fileContents[contentIndex] = c;
+      contentIndex++;
+    }
+    
+
+  }
+}
+
 
 void removeHead(struct linkedList *l)
 {
@@ -92,25 +143,41 @@ void removeHead(struct linkedList *l)
 
 int main(int argc, char**argv)
 {
-  linkedList *l = linkedListCreate();
-  char *temp;
-  char temp2[6] = "hello";
-  char temp4[4] = "bye";
-  temp=malloc(sizeof(char)*6);
-  strcpy(temp,temp2);
-  addToList(l, temp);
-  char *temp3;
-  temp3=malloc(sizeof(char)*4);
-  strcpy(temp3,temp4);
-  addToList(l,temp3);
-  printf("head: %s\n", l->head->str);
-  printf("tail: %s\n", l->tail->str);
-  removeHead(l);
-  printf("head: %s\n", l->head->str);
-  printf("tail: %s\n", l->tail->str);
-  removeHead(l);
-  if(debugPrint1)
+
+linkedList *names = linkedListCreate();
+
+for(int i=0; i<=argc; i++)
+{ printf("Arg %d %s\n", i, argv[i]);
+}
+
+for(int i=3; i<=argc; i++){
+    addToList(names, argv[i]);
+}
+
+  if(debugPrint2)
   {
     printf("Line %d\n", __LINE__);
-  } 
+  }
+
+if(debugPrint1)
+{
+  printf("%s, %s, %s", names->head->str, names->head->next->str, names->head->next->next->str);
 }
+
+
+
+if(*argv[1] == 'r'){
+  
+  if(debugPrint2)
+  {
+    printf("Line %d\n", __LINE__);
+  }
+  
+  replace(names, argv[2]);
+}
+
+
+
+
+}
+
