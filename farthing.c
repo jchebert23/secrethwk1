@@ -14,7 +14,7 @@
 
 int debugPrint1 = 0;
 int debugPrint2 = 1;
-
+int debugPrint3 = 1;
 typedef struct linkedList {
     struct elt *head; 
     struct elt *tail; 
@@ -87,6 +87,97 @@ void linkedListDestroy(struct linkedList *l, int t)
 	}
 	free(l);
 }
+
+
+void removeHead(struct linkedList *l)
+{
+	struct elt *e;
+	if(debugPrint1)
+	{
+		printf("Line %d\n", __LINE__);
+	}
+	e = l->head;
+	if(l->head == 0)
+	{
+	    l->tail = 0;
+	}
+	l->head = e->next;
+	if(debugPrint1)
+	{
+		printf("line %d\n", __LINE__);
+	}
+	free(e->str);
+	if(debugPrint1)
+	{
+		printf("line %d\n", __LINE__);
+	}
+	free(e);
+}
+
+
+
+void expandNamesHelper(char *name, struct linkedList *l)
+{
+  struct stat buff;
+  if(lstat(name, &buff) == -1)
+  {
+    printf("File/Directory Name: %s Does not Exist", name);
+    exit(0);
+  }
+  else
+  {
+//    printf("File type: %d\n", buff.st_mode);
+      //IMPORTANT: AM I ALLOWED TO USE THIS
+//      printf("File type: %d\n", S_ISREG(buff.st_mode));
+      if(S_ISREG(buff.st_mode))
+      {
+        addToList(l,name);
+      }
+      else
+      {
+        DIR *currdir = opendir(name);
+        struct dirent *contentOfDir;
+        while((contentOfDir = readdir(currdir)) != NULL)
+        {
+	  if(strcmp(contentOfDir->d_name, ".")==0 || strcmp(contentOfDir->d_name, "..")==0)
+	  {
+		continue;
+	  }
+	  printf("Current Name: %s\n", contentOfDir->d_name);
+          char *path = malloc(sizeof(char) * (strlen(name) + strlen(contentOfDir->d_name)+2));
+          strcpy(path, name);
+          *(path+strlen(name))= '/';
+          strcpy(path+strlen(name)+1, contentOfDir->d_name);
+          printf("Constructed Path: %s\n", path);
+	  expandNamesHelper(path, l);
+        }
+        closedir(currdir);
+	int curLength = strlen(name);
+	name = realloc(name, sizeof(char) * (curLength +2));
+	*(name + curLength) = '/';
+	*(name + curLength+1)=0;
+	printf("Constructed Path: %s\n", name);
+        addToList(l,name);
+      }
+  }
+}
+
+
+
+void expandNames(char **arguments, int numOfArgs, struct linkedList *l)
+{  
+for(int i=3; i<numOfArgs ; i++)
+{
+char *name= malloc(sizeof(char)* (strlen(arguments[i])+1));
+strcpy(name, arguments[i]);
+printf("name: %s\n", name);
+expandNamesHelper(name, l);
+}
+}
+
+
+
+
 
 void replace(struct linkedList *l, char *archiveFileName){
   //https://stackoverflow.com/questions/174531/how-to-read-the-content-of-a-file-to-a-string-in-c
@@ -197,30 +288,6 @@ void replace(struct linkedList *l, char *archiveFileName){
 }
 
 
-void removeHead(struct linkedList *l)
-{
-	struct elt *e;
-	if(debugPrint1)
-	{
-		printf("Line %d\n", __LINE__);
-	}
-	e = l->head;
-	if(l->head == 0)
-	{
-	    l->tail = 0;
-	}
-	l->head = e->next;
-	if(debugPrint1)
-	{
-		printf("line %d\n", __LINE__);
-	}
-	free(e->str);
-	if(debugPrint1)
-	{
-		printf("line %d\n", __LINE__);
-	}
-	free(e);
-}
 
 int main(int argc, char**argv)
 {
@@ -231,19 +298,15 @@ for(int i=0; i<argc; i++)
 { printf("Arg %d %s\n", i, argv[i]);
 }
 
-for(int i=3; i<argc; i++){
-    addToList(names, argv[i]);
+expandNames(argv, argc, names);
+struct elt *e=names->head;
+while(e!=0)
+{
+	printf("Element: %s\n", e->str);
+	e=e->next;
 }
-
-
-
-if(*argv[1] == 'r'){
-  
-  if(debugPrint2)
-  {
-    printf("Line %d\n", __LINE__);
-  }
-  
+exit(0);
+if(*argv[1] == 'r'){ 
   replace(names, argv[2]);
 }
 
