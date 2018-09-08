@@ -66,6 +66,8 @@ void removeItem(struct linkedList *l, char *str)
 		free(e->str);
 		free(e);
 	}
+	else
+	{
 	while(e->next != 0)
 	{
 		if(strcmp(e->next->str, str)==0)
@@ -81,6 +83,7 @@ void removeItem(struct linkedList *l, char *str)
 			e=e->next;
 		}
 
+	}
 	}
 
 }
@@ -207,7 +210,7 @@ expandNamesHelper(name, l);
 
 
 
-void replace(struct linkedList *l, char *archiveFileName){
+void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
   //https://stackoverflow.com/questions/174531/how-to-read-the-content-of-a-file-to-a-string-in-c
   if(debugPrint4)
   {
@@ -216,8 +219,8 @@ void replace(struct linkedList *l, char *archiveFileName){
   FILE *f = fopen(archiveFileName, "r");
   char c;
   int  endOfFile = 0;
-  char template[]= "tempArchiveXXXXXX";
-  int tempFile = mkstemp(template);
+  char temp[]= "tempArchiveXXXXXX";
+  int tempFile = mkstemp(temp);
   FILE *tempFile2 = fdopen(tempFile, "w");
   while(!feof(f))
   {
@@ -313,6 +316,8 @@ void replace(struct linkedList *l, char *archiveFileName){
     if(searchList(l, absolutePath))
     {
       struct stat buff;
+      if(dor)
+      {
       if(lstat(absolutePath, &buff) == -1)
       {
         printf("File %s Does Not Exist", absolutePath);
@@ -336,12 +341,17 @@ void replace(struct linkedList *l, char *archiveFileName){
       }
       fclose(NEWCONTENTS);
       }
+      }
 
 	  if(debugPrint4)
 	  {
 		  printf("Line %d\n", __LINE__);
 	  }
-      removeItem(l, absolutePath);      
+      removeItem(l, absolutePath);
+      if(debugPrint4)
+      {
+	      printf("Line %d\n", __LINE__);
+      }
     }
     else
     {
@@ -361,7 +371,18 @@ void replace(struct linkedList *l, char *archiveFileName){
       fputs("\n", tempFile2);
     }
   }
+  //If there were not at least one deletion from command line argument
+  if(dor ==0 && l->head != 0)
+  {
+	  struct elt *cantDelete = l->head;
+	  while(cantDelete!=0)
+	  {
+		  printf("Cant Delete %s From Archive Since It Does Not Exist\n", cantDelete->str);
+		  cantDelete=cantDelete->next;
+	  }
+	  exit(0);
 
+  }
   if(debugPrint4)
   {
 	  printf("Line %d\n", __LINE__);
@@ -414,6 +435,8 @@ void replace(struct linkedList *l, char *archiveFileName){
   
   fclose(tempFile2);
   fclose(f);
+  unlink(archiveFileName);
+  rename(temp, archiveFileName);
 }
 
 
@@ -436,14 +459,16 @@ while(e!=0)
 	e=e->next;
 
 }
-printf("HERE\n");
 if(debugPrint4)
 {
 	printf("Line %d\n", __LINE__);
 }
 
 if(*argv[1] == 'r'){ 
-  replace(names, argv[2]);
+  deleteOrReplace(names, argv[2], 1);
+}
+else if(*argv[1] == 'd'){
+  deleteOrReplace(names, argv[2], 0);
 }
 
 
