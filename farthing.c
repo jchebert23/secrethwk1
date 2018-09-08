@@ -15,7 +15,7 @@
 int debugPrint1 = 0;
 int debugPrint2 = 0;
 int debugPrint3 = 0;
-int debugPrint4 = 1;
+int debugPrint4 = 0;
 typedef struct linkedList {
     struct elt *head; 
     struct elt *tail; 
@@ -222,9 +222,14 @@ void replace(struct linkedList *l, char *archiveFileName){
   while(!feof(f))
   {
     int fileNameSizeIndex=0;
-    char *fileNameSize = malloc(sizeof(char) *4);
+    char *fileNameSize = malloc(sizeof(char) *5);
     while((c = fgetc(f)) != '|')
     {
+      
+      if(debugPrint4)
+      {
+	      printf("Character c: %c\n", c);
+      }
       //if we reach end of file, got out of this
       if(c==EOF)
       {
@@ -238,14 +243,24 @@ void replace(struct linkedList *l, char *archiveFileName){
     {
       break;
     } 
-    char *absolutePath = malloc(sizeof(char) * PATH_MAX);
+    fileNameSize[fileNameSizeIndex]=0;
+    char *absolutePath = malloc(sizeof(char) * (PATH_MAX +1 ));
     int pathNameIndex=0;
-    while((c = fgetc(f)) != '\n')
+    while(pathNameIndex<atoi(fileNameSize))
     {
+      
+      c=fgetc(f);
+      if(debugPrint4)
+      {
+	      printf("Character c: %c\n", c);
+      }
       absolutePath[pathNameIndex] = c;
       pathNameIndex++;
     }
-    absolutePath[pathNameIndex] = 0;  
+    absolutePath[pathNameIndex] = 0;
+    //getting rid of new line character
+    fgetc(f); 
+    ///
   if(debugPrint4)
   {
 	  printf("Line %d\n", __LINE__);
@@ -253,27 +268,42 @@ void replace(struct linkedList *l, char *archiveFileName){
   }
      //IMPORTANT: MIGHT HAVE TO SWITCH THESE CHARS TO INTS
     int fileSizeIndex = 0;
-    char *fileSize = malloc(sizeof(char) *4);
+    char *fileSize = malloc(sizeof(char) *5);
     while((c = fgetc(f)) != '|')
      {
+       
+      if(debugPrint4)
+      {
+	      printf("Character c: %c\n", c);
+      }
        fileSize[fileSizeIndex] = c;
        fileSizeIndex++;
      }
-
+    fileSize[fileSizeIndex]=0;
   if(debugPrint4)
   {
 	  printf("Line %d\n", __LINE__);
   }
 
-    char *fileContents = malloc(sizeof(char) *atoi(fileSize));
+    char *fileContents = malloc(sizeof(char) *(atoi(fileSize)+1));
     int contentIndex = 0;
     
-    while((c = fgetc(f)) != '\n')
+    while(contentIndex<atoi(fileSize))
     {
+      	    
+      c=fgetc(f);
+      
+      if(debugPrint4)
+      {
+	      printf("Character c: %c\n", c);
+      }
       fileContents[contentIndex] = c;
       contentIndex++;
     }
-
+    fileContents[contentIndex]=0;
+    //getting rid of new line character
+    fgetc(f);
+    //
     if(debugPrint4)
     {
 	    printf("Line %d\n", __LINE__);
