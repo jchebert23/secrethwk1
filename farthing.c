@@ -429,7 +429,7 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
   rename(temp, archiveFileName);
 }
 
-void archiveInformation(char *archiveName, linkedList *names)
+void archiveInformationOrExtraction(char *archiveName, linkedList *names, int aoe)
 {
 
   FILE *f = fopen(archiveName, "r");
@@ -443,14 +443,34 @@ void archiveInformation(char *archiveName, linkedList *names)
     }
     char *absolutePath = fileInfo->fileName;
     char *fileSize = fileInfo->fileSize;
+    char *fileContents = fileInfo->fileContent;
     if(searchList(names, absolutePath) || names->head==0)
     {
-    printf("%s\t%s\n", fileSize, absolutePath);
-    }
+	if(aoe)
+	{
+	printf("%s\t%s\n", fileSize, absolutePath);
+	}
+	else
+	{
+		struct stat buff;
+		lstat(absolutePath, &buff);
+		if(!S_ISDIR(buff.st_mode))
+		{
+			FILE *currFile = fopen(absolutePath, "w");
+			if(currFile)
+			{
+			    fputs(fileContents, currFile);
+			    fclose(currFile);
+			}
+			else
+			{
+			    printf("File %s could not be updated from archive, since it does not exist",absolutePath);
+			    exit(0);
+			}
+		}
+	}
+    }	
  }
-
-
-
 }
 
 int main(int argc, char**argv)
@@ -466,8 +486,12 @@ else if(*argv[1] == 'd'){
 }
 
 else if(*argv[1] == 't'){
-archiveInformation(argv[2],names);
+archiveInformationOrExtraction(argv[2],names,1);
 }
+else if(*argv[1] == 'x')
+{
+archiveInformationOrExtraction(argv[2],names,0);
+}	
 
 }
 
