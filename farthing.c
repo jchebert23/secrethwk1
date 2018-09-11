@@ -1,4 +1,3 @@
-
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,11 +11,6 @@
 #include <inttypes.h>
 
 
-int debugPrint1 = 0;
-int debugPrint2 = 0;
-int debugPrint3 = 0;
-int debugPrint4 = 0;
-int debugPrint5 = 0;
 typedef struct fileInformation{
     char *fileNameSize;
     char *fileName;
@@ -114,17 +108,15 @@ int searchList(struct linkedList *l, char *string)
   return 0;
 }
 
-void linkedListDestroy(struct linkedList *l, int t)
+void linkedListDestroy(struct linkedList *l)
 {
 	struct elt *e;
 	while((l->head)!=0)
 	{	
 		e=l->head;
 		l->head=e->next;
-		if(t==1)
-		{
-			free(e->str);
-		}
+		
+		free(e->str);
 		free(e);
 	}
 	free(l);
@@ -134,25 +126,13 @@ void linkedListDestroy(struct linkedList *l, int t)
 void removeHead(struct linkedList *l)
 {
 	struct elt *e;
-	if(debugPrint1)
-	{
-		printf("Line %d\n", __LINE__);
-	}
 	e = l->head;
 	if(l->head == 0)
 	{
 	    l->tail = 0;
 	}
 	l->head = e->next;
-	if(debugPrint1)
-	{
-		printf("line %d\n", __LINE__);
-	}
 	free(e->str);
-	if(debugPrint1)
-	{
-		printf("line %d\n", __LINE__);
-	}
 	free(e);
 }
 
@@ -164,6 +144,7 @@ void expandNamesHelper(char *name, struct linkedList *l)
   if(lstat(name, &buff) == -1)
   {
     printf("File/Directory Name: %s Does not Exist", name);
+    linkedListDestroy(l);
     exit(0);
   }
   else
@@ -201,7 +182,18 @@ void expandNamesHelper(char *name, struct linkedList *l)
   }
 }
 
+void destroyFileInformation(struct fileInformation *f)
+{
 
+    free(f->fileNameSize);
+    free(f->fileName);
+    free(f->fileSize);
+    if(f->fileContent)
+    {
+    free(f->fileContent);
+    }
+    free(f);
+}
 
 void expandNames(char **arguments, int numOfArgs, struct linkedList *l)
 {  
@@ -213,22 +205,8 @@ expandNamesHelper(name, l);
 }
 }
 
-int tempGetC(FILE *file)
+fileInformation *  getFileInformation(FILE *f)
 {
-	return getchar();
-}
-
-fileInformation *  getFileInformation(FILE *f, char* archiveFileName)
-{
-    int (*gettingCharacter)(FILE *);
-    if(strcmp(archiveFileName, "-")==0)
-    {
-	    gettingCharacter = tempGetC;
-    }
-    else
-    {
-	    gettingCharacter = fgetc;
-    }
 struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
     fileInfo->fileContent=0;
     int fileNameSizeIndex=0;
@@ -236,17 +214,16 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
     char *fileSize = malloc(sizeof(char)*5);
     char *absolutePath = malloc(sizeof(char) * (PATH_MAX + 1)); 
     char c;
-    while((c = gettingCharacter(f)) != '|')
+    while((c = fgetc(f)) != '|')
     {
       
-      if(debugPrint5)
-	{
-		printf("Character %c\n", c);
-	}
       //if we reach end of file, got out of this
       if(c==EOF)
       {
 	//IMPORTANT: CAN THEY MAKE an emtpy file NAME???
+	free(fileNameSize);
+	free(fileSize);
+	free(absolutePath);
 	fileInfo->fileNameSize=0 ;
         return fileInfo;
       }
@@ -258,28 +235,20 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
     while(pathNameIndex<atoi(fileNameSize))
     {
       
-      c=gettingCharacter(f);
+      c=fgetc(f);
       
-      if(debugPrint5)
-	{
-		printf("Character %c\n", c);
-	}
       absolutePath[pathNameIndex] = c;
       pathNameIndex++;
     }
     absolutePath[pathNameIndex] = 0;
     //getting rid of new line character
-    gettingCharacter(f); 
+    fgetc(f); 
     ///
      //IMPORTANT: MIGHT HAVE TO SWITCH THESE CHARS TO INTS
     int fileSizeIndex = 0;
-    while((c = gettingCharacter(f)) != '|')
+    while((c = fgetc(f)) != '|')
      {
 	
-      if(debugPrint5)
-	{
-		printf("Character %c\n", c);
-	}
        fileSize[fileSizeIndex] = c;
        fileSizeIndex++;
      }
@@ -290,18 +259,14 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
     
     while(contentIndex<atoi(fileSize))
     {
-      c=gettingCharacter(f);
+      c=fgetc(f);
       
-      if(debugPrint5)
-	{
-		printf("Character %c\n", c);
-	}
       fileContents[contentIndex] = c;
       contentIndex++;
     }
     fileContents[contentIndex]=0;
     //getting rid of new line character
-    gettingCharacter(f);
+    fgetc(f);
     fileInfo->fileContent = fileContents;
     fileInfo->fileNameSize = fileNameSize;
     fileInfo->fileSize= fileSize;
@@ -311,20 +276,29 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
 
 
 void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
+  FILE *f;
+  char temp[]="tempArchiveXXXXXX";
+  int tempFile;
+  FILE *tempFile2;
   //https://stackoverflow.com/questions/174531/how-to-read-the-content-of-a-file-to-a-string-in-c
-  if(strcmp(archiveFileName, "-") != 0)
+  if(strcmp(archiveFileName, "-"))
   {
-	  FILE *f = fopen(archiveFileName, "r");
-	  char temp[]= "tempArchiveXXXXXX";
-	  int tempFile = mkstemp(temp);
-	  FILE *tempFile2 = fdopen(tempFile, "w");
+  f = fopen(archiveFileName, "r");
+  tempFile = mkstemp(temp);
+  tempFile2 = fdopen(tempFile, "w");
+  }
+  else
+  {
+  f = stdin;
+  tempFile2 = stdout;
   }
   while(f != 0)
   {
     //if the absolute path appears in the arguments
-    struct fileInformation *fileInfo = getFileInformation(f, archiveFileName);
+    struct fileInformation *fileInfo = getFileInformation(f);
     if(fileInfo->fileNameSize == 0)
     {
+	    free(fileInfo);
 	    break;
     }
     char *absolutePath = fileInfo->fileName;
@@ -338,14 +312,16 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
       if(lstat(absolutePath, &buff) == -1)
       {
         printf("File %s Does Not Exist", absolutePath);
+	destroyFileInformation(fileInfo);
+	linkedListDestroy(l);
         exit(0);
       }
       else
       {
         fprintf(tempFile2, "%ld", strlen(absolutePath));
-      fprintf(tempFile2, "%s", "|");
-      fprintf(tempFile2, "%s", absolutePath);
-      fprintf(tempFile2, "%s", "\n");
+      fputs("|", tempFile2);
+      fputs(absolutePath, tempFile2);
+      fputs("\n", tempFile2);
       //GOT THIS LINE FROM ANDREW SHEINBERG, properly formats the size returned by the lstat function to write it to the file
      
       if(S_ISREG(buff.st_mode))
@@ -354,19 +330,19 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
       }
       else
       {
-      fprintf(tempFile2, "%s", 0);
+      fputs("0", tempFile2);
       }
 
       //GOT ABOVE LINE FROM ANDREW SHEINBERG
-      fprintf(tempFile2, "%s", "|");
+      fputs("|", tempFile2);
       FILE *NEWCONTENTS = fopen(absolutePath , "r");
       int fileChar;
       while((fileChar = fgetc(NEWCONTENTS)) != EOF)
       {
-        fprintf(tempFile2, "%c", fileChar);
+        fputc(fileChar, tempFile2);
       }
       fclose(NEWCONTENTS);
-      fprintf(tempFile2, "%s", "\n");
+      fputs("\n", tempFile2);
       }
       }
 
@@ -376,14 +352,15 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
     {
       
       fprintf(tempFile2, "%ld" , strlen(absolutePath));
-      fprintf(tempFile2, "%s", "|");
-      fprintf(tempFile2, "%s", absolutePath);
-      fprintf(tempFile2, "%s", "\n");
-      fprintf(tempFile2, "%s", fileSize);
-      fprintf(tempFile2, "%s", "|");
-      fprintf(tempFile2, "%s", fileContents); 
-      fprintf(tempFile2, "%s", "\n");
+      fputs("|", tempFile2);
+      fputs(absolutePath, tempFile2);
+      fputs("\n", tempFile2);
+      fputs(fileSize, tempFile2);
+      fputs("|", tempFile2);
+      fputs(fileContents, tempFile2); 
+      fputs("\n", tempFile2);
     }
+    destroyFileInformation(fileInfo);
   }
   //If there were not at least one deletion from command line argument
   if(dor ==0 && l->head != 0)
@@ -394,6 +371,7 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
 		  printf("Cant Delete %s From Archive Since It Does Not Exist\n", cantDelete->str);
 		  cantDelete=cantDelete->next;
 	  }
+	  linkedListDestroy(l);
 	  exit(0);
 
   }
@@ -404,6 +382,7 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
     if(lstat(e->str, &buff) ==-1)
     {
 	    printf("File %s Does Not Exist", e->str);
+	    linkedListDestroy(l);
 	    exit(0);
     }
     else
@@ -436,26 +415,43 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
 //HAVE TO REMOVE THESE ITEMS
     }
   }
-  
-  fclose(tempFile2);
-  if(f)
+  if(strcmp(archiveFileName, "-"))
   {
-  fclose(f);
-  unlink(archiveFileName);
+	  fclose(tempFile2);
+	  if(f)
+	  {
+	  fclose(f);
+	  unlink(archiveFileName);
+	  }
+	  rename(temp, archiveFileName);
   }
-  rename(temp, archiveFileName);
 }
 
 void archiveInformationOrExtraction(char *archiveName, linkedList *names, int aoe)
 {
+  FILE *f;
+  if(strcmp(archiveName, "-"))
+  {
+  f = fopen(archiveName, "r");
+  }
+  else
+  {
+  f = stdin;
+  }
+  if(!f)
+  {
+	  printf("Tried to extract from  archive/print archive but file does not exist\n");
+	  linkedListDestroy(names);
+	  exit(0);
 
-  FILE *f = fopen(archiveName, "r");
+  }
   while(f != 0)
   {
     //if the absolute path appears in the arguments
-    struct fileInformation *fileInfo = getFileInformation(f, archiveName);
+    struct fileInformation *fileInfo = getFileInformation(f);
     if(fileInfo->fileNameSize == 0)
     {
+	    free(fileInfo);
 	    break;
     }
     char *absolutePath = fileInfo->fileName;
@@ -482,11 +478,17 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 			else
 			{
 			    printf("File %s could not be updated from archive, since it does not exist",absolutePath);
+			    linkedListDestroy(names);
 			    exit(0);
 			}
 		}
 	}
-    }	
+    }
+    destroyFileInformation(fileInfo);
+ }
+ if(strcmp(archiveName, "-") && f)
+ {
+ fclose(f);
  }
 }
 
@@ -508,7 +510,10 @@ archiveInformationOrExtraction(argv[2],names,1);
 else if(*argv[1] == 'x')
 {
 archiveInformationOrExtraction(argv[2],names,0);
-}	
+}
+else{
+printf("Improper Command Entered\n");
+}
+linkedListDestroy(names);
 
 }
-
