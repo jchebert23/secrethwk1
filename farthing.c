@@ -213,8 +213,22 @@ expandNamesHelper(name, l);
 }
 }
 
-fileInformation *  getFileInformation(FILE *f)
+int tempGetC(FILE *file)
 {
+	return getchar();
+}
+
+fileInformation *  getFileInformation(FILE *f, char* archiveFileName)
+{
+    int (*gettingCharacter)(FILE *);
+    if(strcmp(archiveFileName, "-")==0)
+    {
+	    gettingCharacter = tempGetC;
+    }
+    else
+    {
+	    gettingCharacter = fgetc;
+    }
 struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
     fileInfo->fileContent=0;
     int fileNameSizeIndex=0;
@@ -222,7 +236,7 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
     char *fileSize = malloc(sizeof(char)*5);
     char *absolutePath = malloc(sizeof(char) * (PATH_MAX + 1)); 
     char c;
-    while((c = fgetc(f)) != '|')
+    while((c = gettingCharacter(f)) != '|')
     {
       
       if(debugPrint5)
@@ -244,7 +258,7 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
     while(pathNameIndex<atoi(fileNameSize))
     {
       
-      c=fgetc(f);
+      c=gettingCharacter(f);
       
       if(debugPrint5)
 	{
@@ -255,11 +269,11 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
     }
     absolutePath[pathNameIndex] = 0;
     //getting rid of new line character
-    fgetc(f); 
+    gettingCharacter(f); 
     ///
      //IMPORTANT: MIGHT HAVE TO SWITCH THESE CHARS TO INTS
     int fileSizeIndex = 0;
-    while((c = fgetc(f)) != '|')
+    while((c = gettingCharacter(f)) != '|')
      {
 	
       if(debugPrint5)
@@ -276,7 +290,7 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
     
     while(contentIndex<atoi(fileSize))
     {
-      c=fgetc(f);
+      c=gettingCharacter(f);
       
       if(debugPrint5)
 	{
@@ -287,7 +301,7 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
     }
     fileContents[contentIndex]=0;
     //getting rid of new line character
-    fgetc(f);
+    gettingCharacter(f);
     fileInfo->fileContent = fileContents;
     fileInfo->fileNameSize = fileNameSize;
     fileInfo->fileSize= fileSize;
@@ -298,14 +312,17 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
 
 void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
   //https://stackoverflow.com/questions/174531/how-to-read-the-content-of-a-file-to-a-string-in-c
-  FILE *f = fopen(archiveFileName, "r");
-  char temp[]= "tempArchiveXXXXXX";
-  int tempFile = mkstemp(temp);
-  FILE *tempFile2 = fdopen(tempFile, "w");
+  if(strcmp(archiveFileName, "-") != 0)
+  {
+	  FILE *f = fopen(archiveFileName, "r");
+	  char temp[]= "tempArchiveXXXXXX";
+	  int tempFile = mkstemp(temp);
+	  FILE *tempFile2 = fdopen(tempFile, "w");
+  }
   while(f != 0)
   {
     //if the absolute path appears in the arguments
-    struct fileInformation *fileInfo = getFileInformation(f);
+    struct fileInformation *fileInfo = getFileInformation(f, archiveFileName);
     if(fileInfo->fileNameSize == 0)
     {
 	    break;
@@ -326,9 +343,9 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
       else
       {
         fprintf(tempFile2, "%ld", strlen(absolutePath));
-      fputs("|", tempFile2);
-      fputs(absolutePath, tempFile2);
-      fputs("\n", tempFile2);
+      fprintf(tempFile2, "%s", "|");
+      fprintf(tempFile2, "%s", absolutePath);
+      fprintf(tempFile2, "%s", "\n");
       //GOT THIS LINE FROM ANDREW SHEINBERG, properly formats the size returned by the lstat function to write it to the file
      
       if(S_ISREG(buff.st_mode))
@@ -337,19 +354,19 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
       }
       else
       {
-      fputs("0", tempFile2);
+      fprintf(tempFile2, "%s", 0);
       }
 
       //GOT ABOVE LINE FROM ANDREW SHEINBERG
-      fputs("|", tempFile2);
+      fprintf(tempFile2, "%s", "|");
       FILE *NEWCONTENTS = fopen(absolutePath , "r");
       int fileChar;
       while((fileChar = fgetc(NEWCONTENTS)) != EOF)
       {
-        fputc(fileChar, tempFile2);
+        fprintf(tempFile2, "%c", fileChar);
       }
       fclose(NEWCONTENTS);
-      fputs("\n", tempFile2);
+      fprintf(tempFile2, "%s", "\n");
       }
       }
 
@@ -359,13 +376,13 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
     {
       
       fprintf(tempFile2, "%ld" , strlen(absolutePath));
-      fputs("|", tempFile2);
-      fputs(absolutePath, tempFile2);
-      fputs("\n", tempFile2);
-      fputs(fileSize, tempFile2);
-      fputs("|", tempFile2);
-      fputs(fileContents, tempFile2); 
-      fputs("\n", tempFile2);
+      fprintf(tempFile2, "%s", "|");
+      fprintf(tempFile2, "%s", absolutePath);
+      fprintf(tempFile2, "%s", "\n");
+      fprintf(tempFile2, "%s", fileSize);
+      fprintf(tempFile2, "%s", "|");
+      fprintf(tempFile2, "%s", fileContents); 
+      fprintf(tempFile2, "%s", "\n");
     }
   }
   //If there were not at least one deletion from command line argument
@@ -436,7 +453,7 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
   while(f != 0)
   {
     //if the absolute path appears in the arguments
-    struct fileInformation *fileInfo = getFileInformation(f);
+    struct fileInformation *fileInfo = getFileInformation(f, archiveName);
     if(fileInfo->fileNameSize == 0)
     {
 	    break;
