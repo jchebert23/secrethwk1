@@ -24,10 +24,11 @@ typedef struct linkedList {
     struct elt *tail; 
 }linkedList;
 
-struct elt {
+typedef struct elt {
     struct elt *next;
     char *str;
-};
+    int flag;
+}elt;
 
 linkedList *
 linkedListCreate(void)
@@ -43,6 +44,7 @@ linkedListCreate(void)
 
 void addToList(struct linkedList *l, char *str)
 {
+	int flag=0;
 	struct elt *e;
 	e = malloc(sizeof(struct elt));
 	e->str=str;
@@ -55,6 +57,7 @@ void addToList(struct linkedList *l, char *str)
 	{
 		l->tail->next=e;
 	}
+	e->flag=flag;
 	l->tail=e;
 }
 
@@ -91,15 +94,42 @@ void removeItem(struct linkedList *l, char *str)
 
 }
 
-int searchList(struct linkedList *l, char *string)
+int partOfDirectory(char *directoryName, char *string)
+{
+	 //char *string3 = string;
+	if(directoryName[strlen(directoryName)-1]!= '/')
+	{
+		return 0;
+	}
+	int length = strlen(directoryName)-1;
+	while(length>=0)
+	{
+		if(string[length] != directoryName[length])
+		{
+			printf("%s is not apart of directory %s\n", string, directoryName);
+			return 0;
+		}
+	length=length-1;
+	}
+
+	return 1;
+}
+
+elt * searchList(struct linkedList *l, char *string)
 {
   struct elt *e;
   e = l-> head;
   while(e != 0)
   {
+    
     if(strcmp(string, e->str)==0)
     {
-      return 1;
+      return e;
+    }
+    if(partOfDirectory(e->str, string))
+    {
+	printf("%s is apart of this directory %s\n", string, e->str);
+	return e;
     }
     else
     {
@@ -212,8 +242,8 @@ fileInformation *  getFileInformation(FILE *f)
 struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
     fileInfo->fileContent=0;
     int fileNameSizeIndex=0;
-    char *fileNameSize = malloc(sizeof(char) * 5);
-    char *fileSize = malloc(sizeof(char)*5);
+    char *fileNameSize = malloc(sizeof(char) * 16);
+    char *fileSize = malloc(sizeof(char)*16);
     char *absolutePath = malloc(sizeof(char) * (PATH_MAX + 1)); 
     char c;
     while((c = fgetc(f)) != '|')
@@ -250,10 +280,11 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
     int fileSizeIndex = 0;
     while((c = fgetc(f)) != '|')
      {
-	
+  //     printf("Char %c\n", c);	
        fileSize[fileSizeIndex] = c;
        fileSizeIndex++;
      }
+//    printf("File Size Index: %d\n" , fileSizeIndex);
     fileSize[fileSizeIndex]=0;
 
     char *fileContents = malloc(sizeof(char) *(atoi(fileSize)+1));
@@ -354,7 +385,8 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
       }
       }
 
-      removeItem(l, absolutePath);
+      struct elt *e = searchList(l, absolutePath);
+      e->flag=1;
     }
     else
     {
@@ -391,7 +423,8 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
 
     else
     {
-	    
+      if(e->flag==0)
+      {
         fprintf(tempFile2, "%ld", strlen(e->str));
       fputs("|", tempFile2);
       fputs(e->str, tempFile2);
@@ -415,6 +448,7 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
       else
       {
 	      fputs("0|\n",tempFile2);
+      }
       }
 //HAVE TO REMOVE THESE ITEMS
     }
@@ -464,14 +498,41 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
     {
 	if(aoe)
 	{
-	printf("%s\t%s\n", fileSize, absolutePath);
+	printf("%8d %s\n", atoi(fileSize), absolutePath);
 	}
 	else
 	{
 		struct stat buff;
-		if(lstat(absolutePath, &buff)==-1 && absolutePath[strlen(absolutePath)-1]=="/")
+		if(lstat(absolutePath, &buff)==-1 && *(absolutePath+strlen(absolutePath)-1) == '/')
 		{
-		mkdir(absolutePath);
+		mkdir(absolutePath,0777);
+		}
+		else if(lstat(absolutePath, &buff)==-1)
+		{
+			struct stat buff2;			
+			char *stringTemp = absolutePath;
+			while(stringTemp != 0)
+			{
+			const char *stringTemp2 = stringTemp;	
+			char *locationOfSlash =strchr(stringTemp2, '/');
+			if(locationOfSlash == 0)
+			{
+				break;
+			}
+			char *tempDir = malloc(sizeof(char)*(locationOfSlash-absolutePath)+1);
+
+			memcpy(tempDir,absolutePath,locationOfSlash-absolutePath+1);
+			tempDir[strlen(tempDir)+1]='\0';
+			//printf("TempDir: %s\n", tempDir);
+			if(lstat(tempDir, &buff2)==-1)
+			{
+			    mkdir(tempDir, 0777);
+			  //  printf("Making this dir:%s\n", tempDir);
+			}
+			stringTemp = absolutePath+(locationOfSlash-absolutePath)+1;
+			free(tempDir);
+			}
+
 		}
 		if(!S_ISDIR(buff.st_mode))
 		{
@@ -502,6 +563,7 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 
 int main(int argc, char**argv)
 {
+
 
 linkedList *names = linkedListCreate();
 expandNames(argv, argc, names);
