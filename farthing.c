@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+#include "farthing.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -143,10 +144,11 @@ void expandNamesHelper(char *name, struct linkedList *l)
   struct stat buff;
   if(lstat(name, &buff) == -1)
   {
-    printf("File/Directory Name: %s Does not Exist", name);
     linkedListDestroy(l);
+    WARN("File/Directory Name: %s Does not Exist", name);
     exit(0);
   }
+
   else
   {
 //    printf("File type: %d\n", buff.st_mode);
@@ -292,6 +294,12 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
   f = stdin;
   tempFile2 = stdout;
   }
+  if(f ==0 && dor == 0)
+  {
+    linkedListDestroy(l);
+    WARN("Tried to delete from archive but archive does not exist%s\n", "");	  
+    exit(0);
+  }
   while(f != 0)
   {
     //if the absolute path appears in the arguments
@@ -311,14 +319,14 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
       {
       if(lstat(absolutePath, &buff) == -1)
       {
-        printf("File %s Does Not Exist", absolutePath);
 	destroyFileInformation(fileInfo);
 	linkedListDestroy(l);
-        exit(0);
+        WARN("File %s Does Not Exist", absolutePath);
+	exit(0);
       }
       else
       {
-        fprintf(tempFile2, "%ld", strlen(absolutePath));
+      fprintf(tempFile2, "%ld", strlen(absolutePath));
       fputs("|", tempFile2);
       fputs(absolutePath, tempFile2);
       fputs("\n", tempFile2);
@@ -365,15 +373,10 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
   //If there were not at least one deletion from command line argument
   if(dor ==0 && l->head != 0)
   {
-	  struct elt *cantDelete = l->head;
-	  while(cantDelete!=0)
-	  {
-		  printf("Cant Delete %s From Archive Since It Does Not Exist\n", cantDelete->str);
-		  cantDelete=cantDelete->next;
-	  }
+	  unlink(temp);
 	  linkedListDestroy(l);
-	  exit(0);
-
+	  WARN("DID NOT CAUSE AT LEAST ONE DELETION: %s", "");
+	exit(0);
   }
   //Now at point where add all things that are not currently in the archive
   for(struct elt *e=l->head; e!=0; e=e->next)
@@ -381,10 +384,11 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
     struct stat buff;
     if(lstat(e->str, &buff) ==-1)
     {
-	    printf("File %s Does Not Exist", e->str);
 	    linkedListDestroy(l);
+	    WARN("File %s Does Not Exist", e->str);
 	    exit(0);
     }
+
     else
     {
 	    
@@ -440,10 +444,9 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
   }
   if(!f)
   {
-	  printf("Tried to extract from  archive/print archive but file does not exist\n");
 	  linkedListDestroy(names);
+	  WARN("ARCHIVE FILE DOES NOT EXIST%s", "");
 	  exit(0);
-
   }
   while(f != 0)
   {
@@ -466,7 +469,10 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 	else
 	{
 		struct stat buff;
-		lstat(absolutePath, &buff);
+		if(lstat(absolutePath, &buff)==-1 && absolutePath[strlen(absolutePath)-1]=="/")
+		{
+		mkdir(absolutePath);
+		}
 		if(!S_ISDIR(buff.st_mode))
 		{
 			FILE *currFile = fopen(absolutePath, "w");
@@ -477,8 +483,10 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 			}
 			else
 			{
-			    printf("File %s could not be updated from archive, since it does not exist",absolutePath);
+
 			    linkedListDestroy(names);
+			    destroyFileInformation(fileInfo);
+			    WARN("FILE DOES NOT EXIST IN CWD%s\n", "");
 			    exit(0);
 			}
 		}
@@ -515,5 +523,4 @@ else{
 printf("Improper Command Entered\n");
 }
 linkedListDestroy(names);
-
 }
