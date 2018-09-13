@@ -102,6 +102,8 @@ int partOfDirectory(char *directoryName, char *string)
 		return 0;
 	}
 	int length = strlen(directoryName)-1;
+	if(length<=strlen(string))
+	{
 	while(length>=0)
 	{
 		if(string[length] != directoryName[length])
@@ -110,6 +112,7 @@ int partOfDirectory(char *directoryName, char *string)
 			return 0;
 		}
 	length=length-1;
+	}
 	}
 
 	return 1;
@@ -121,14 +124,12 @@ elt * searchList(struct linkedList *l, char *string)
   e = l-> head;
   while(e != 0)
   {
-    
     if(strcmp(string, e->str)==0)
     {
       return e;
     }
     if(partOfDirectory(e->str, string))
     {
-	printf("%s is apart of this directory %s\n", string, e->str);
 	return e;
     }
     else
@@ -169,50 +170,6 @@ void removeHead(struct linkedList *l)
 
 
 
-void expandNamesHelper(char *name, struct linkedList *l)
-{
-  struct stat buff;
-  if(lstat(name, &buff) == -1)
-  {
-    linkedListDestroy(l);
-    WARN("File/Directory Name: %s Does not Exist", name);
-    exit(0);
-  }
-
-  else
-  {
-//    printf("File type: %d\n", buff.st_mode);
-      //IMPORTANT: AM I ALLOWED TO USE THIS
-//      printf("File type: %d\n", S_ISREG(buff.st_mode));
-      if(S_ISREG(buff.st_mode))
-      {
-        addToList(l,name);
-      }
-      else
-      {
-        DIR *currdir = opendir(name);
-        struct dirent *contentOfDir;
-        while((contentOfDir = readdir(currdir)) != NULL)
-        {
-	  if(strcmp(contentOfDir->d_name, ".")==0 || strcmp(contentOfDir->d_name, "..")==0)
-	  {
-		continue;
-	  }
-          char *path = malloc(sizeof(char) * (strlen(name) + strlen(contentOfDir->d_name)+2));
-          strcpy(path, name);
-          *(path+strlen(name))= '/';
-          strcpy(path+strlen(name)+1, contentOfDir->d_name);
-	  expandNamesHelper(path, l);
-        }
-        closedir(currdir);
-	int curLength = strlen(name);
-	name = realloc(name, sizeof(char) * (curLength +2));
-	*(name + curLength) = '/';
-	*(name + curLength+1)=0;
-        addToList(l,name);
-      }
-  }
-}
 
 void destroyFileInformation(struct fileInformation *f)
 {
@@ -227,15 +184,6 @@ void destroyFileInformation(struct fileInformation *f)
     free(f);
 }
 
-void expandNames(char **arguments, int numOfArgs, struct linkedList *l)
-{  
-for(int i=3; i<numOfArgs ; i++)
-{
-char *name= malloc(sizeof(char)* (strlen(arguments[i])+1));
-strcpy(name, arguments[i]);
-expandNamesHelper(name, l);
-}
-}
 
 fileInformation *  getFileInformation(FILE *f)
 {
@@ -307,6 +255,98 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
     return fileInfo;
 }
 
+void expandNamesHelper(char *name, struct linkedList *l, char *archiveFileName)
+{
+
+      struct stat buff;
+      if(lstat(name,&buff)==-1)
+      {
+	  int ifDir=0;
+	  FILE *f =fopen(archiveFileName, "r");
+	  while(f != 0)
+	  {
+	    //if the absolute path appears in the arguments
+	    struct fileInformation *fileInfo = getFileInformation(f);
+	    if(fileInfo->fileNameSize == 0)
+	    {
+		    free(fileInfo);
+		    break;
+	    }
+	    
+	    int d=strlen(name)-1;
+	    int notEqual=0;
+	    while(d>=0)
+	    {
+		if(name[d]!=fileInfo->fileName[d])
+		{
+		    notEqual=1;
+		}
+		d=d-1;
+	    }
+	    if(notEqual==0 && fileInfo->fileName[strlen(name)]== '/')
+	    {
+		
+		int curLength = strlen(name);
+		name = realloc(name, sizeof(char) * (curLength +2));
+		*(name + curLength) = '/';
+		*(name + curLength+1)=0;
+		ifDir=1;
+		addToList(l,name);
+		destroyFileInformation(fileInfo);
+		break;
+	    }
+	    destroyFileInformation(fileInfo);
+         }
+	if(ifDir==0)
+	{
+	    addToList(l,name);	
+	}
+	fclose(f);
+  
+      }
+      else if(S_ISREG(buff.st_mode))
+      {
+        addToList(l,name);
+      }
+      else if(S_ISDIR(buff.st_mode))
+      {
+        DIR *currdir = opendir(name);
+        struct dirent *contentOfDir;
+        while((contentOfDir = readdir(currdir)) != NULL)
+        {
+	  if(strcmp(contentOfDir->d_name, ".")==0 || strcmp(contentOfDir->d_name, "..")==0)
+	  {
+		continue;
+	  }
+          char *path = malloc(sizeof(char) * (strlen(name) + strlen(contentOfDir->d_name)+2));
+          strcpy(path, name);
+          *(path+strlen(name))= '/';
+          strcpy(path+strlen(name)+1, contentOfDir->d_name);
+	  expandNamesHelper(path, l, archiveFileName);
+        }
+        closedir(currdir);
+	int curLength = strlen(name);
+	name = realloc(name, sizeof(char) * (curLength +2));
+	*(name + curLength) = '/';
+	*(name + curLength+1)=0;
+        addToList(l,name);
+      }
+
+
+}
+
+
+
+void expandNames(char **arguments, int numOfArgs, struct linkedList *l, char *archiveFileName)
+{  
+for(int i=3; i<numOfArgs ; i++)
+{
+char *name= malloc(sizeof(char)* (strlen(arguments[i])+1));
+strcpy(name, arguments[i]);
+expandNamesHelper(name, l, archiveFileName);
+}
+}
+
 
 void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
   FILE *f;
@@ -331,6 +371,7 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
     WARN("Tried to delete from archive but archive does not exist%s\n", "");	  
     exit(0);
   }
+
   while(f != 0)
   {
     //if the absolute path appears in the arguments
@@ -505,6 +546,8 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 		struct stat buff;
 		if(lstat(absolutePath, &buff)==-1 && *(absolutePath+strlen(absolutePath)-1) == '/')
 		{
+		
+		printf("making directory when absolutePath is %s\n", absolutePath);
 		mkdir(absolutePath,0777);
 		}
 		else if(lstat(absolutePath, &buff)==-1)
@@ -519,13 +562,22 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 			{
 				break;
 			}
-			char *tempDir = malloc(sizeof(char)*(locationOfSlash-absolutePath)+1);
 
-			memcpy(tempDir,absolutePath,locationOfSlash-absolutePath+1);
-			tempDir[strlen(tempDir)+1]='\0';
+			int numOfChars = locationOfSlash-absolutePath;
+			char *tempDir = malloc(sizeof(char)*((locationOfSlash-absolutePath)+1));
+			while(numOfChars>=0)
+			{
+				tempDir[numOfChars]= absolutePath[numOfChars];
+				numOfChars=numOfChars-1;
+			}
+			numOfChars = locationOfSlash-absolutePath;
+			tempDir[numOfChars]= '\0';
+		//	tempDir = (char *)memcpy(tempDir,absolutePath,sizeof(char)*(locationOfSlash-absolutePath+1));
+			//tempDir[strlen(tempDir)]='\0';
 			//printf("TempDir: %s\n", tempDir);
 			if(lstat(tempDir, &buff2)==-1)
 			{
+			    printf("making directory %s, when absolutePath is %s\n", tempDir, absolutePath);
 			    mkdir(tempDir, 0777);
 			  //  printf("Making this dir:%s\n", tempDir);
 			}
@@ -537,19 +589,10 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 		if(!S_ISDIR(buff.st_mode))
 		{
 			FILE *currFile = fopen(absolutePath, "w");
-			if(currFile)
-			{
-			    fputs(fileContents, currFile);
-			    fclose(currFile);
-			}
-			else
-			{
-
-			    linkedListDestroy(names);
-			    destroyFileInformation(fileInfo);
-			    WARN("FILE DOES NOT EXIST IN CWD%s\n", "");
-			    exit(0);
-			}
+			
+			 fputs(fileContents, currFile);
+			 fclose(currFile);
+			
 		}
 	}
     }
@@ -566,7 +609,8 @@ int main(int argc, char**argv)
 
 
 linkedList *names = linkedListCreate();
-expandNames(argv, argc, names);
+expandNames(argv, argc, names, argv[2]);
+
 if(*argv[1] == 'r'){ 
   deleteOrReplace(names, argv[2], 1);
 }
@@ -583,6 +627,7 @@ archiveInformationOrExtraction(argv[2],names,0);
 }
 else{
 printf("Improper Command Entered\n");
+exit(0);
 }
 linkedListDestroy(names);
 }
