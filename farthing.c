@@ -116,9 +116,15 @@ int partOfDirectory(char *directoryName, char *string)
 		}
 	length=length-1;
 	}
-	}
-
+	
+    
 	return 1;
+	}
+	else
+	{
+	
+	return 0;
+	}
 }
 
 elt * searchList(struct linkedList *l, char *string)
@@ -133,6 +139,7 @@ elt * searchList(struct linkedList *l, char *string)
     }
     if(partOfDirectory(e->str, string))
     {
+	
 	return e;
     }
     else
@@ -261,18 +268,9 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
 void expandNamesHelper(char *name, struct linkedList *l, char *archiveFileName, int htcd)
 {
 
-      if(debugPrint1)
-      {
-	    printf("Line %d\n", __LINE__);
-      }
       struct stat buff;
       if(lstat(name,&buff)==-1)
       {
-	
-      if(debugPrint1)
-      {
-	    printf("Line %d\n", __LINE__);
-      }
 	  int ifDir=0;
 	  FILE *f =fopen(archiveFileName, "r");
 	  while(f != 0)
@@ -327,21 +325,10 @@ void expandNamesHelper(char *name, struct linkedList *l, char *archiveFileName, 
       }
       else if(S_ISREG(buff.st_mode))
       {
-	
-      if(debugPrint1)
-      {
-	    printf("Name: %s\n", name);
-	    printf("Line %d\n", __LINE__);
-      }
         addToList(l,name,htcd);
       }
       else if(S_ISDIR(buff.st_mode))
       {
-	
-      if(debugPrint1)
-      {
-	    printf("Line %d\n", __LINE__);
-      }
         DIR *currdir = opendir(name);
         struct dirent *contentOfDir;
         while((contentOfDir = readdir(currdir)) != NULL)
@@ -420,7 +407,9 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
     if(searchList(l, absolutePath))
     {
       fileActuallyDoesntExist=0;	    
+     //repeat code  
       struct stat buff;
+      //repeat code
       if(dor)
       {
       if(lstat(absolutePath, &buff) == -1)
@@ -570,12 +559,6 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
 
 void archiveInformationOrExtraction(char *archiveName, linkedList *names, int aoe)
 {
-if(debugPrint1)
-{
- printf("Archive Name:%s\n", archiveName);
- printf("aoe: %d\n", aoe);
- printf("Line %d\n", __LINE__);
-}
   FILE *f;
   if(strcmp(archiveName, "-"))
   {
@@ -605,30 +588,17 @@ if(debugPrint1)
     char *fileContents = fileInfo->fileContent;
     if(searchList(names, absolutePath) || names->head==0)
     {
-	
-if(debugPrint1)
-{
- printf("Line %d\n", __LINE__);
-}
 	if(aoe)
 	{
 	printf("%8d %s\n", atoi(fileSize), absolutePath);
 	}
 	else
 	{
-		
-if(debugPrint1)
-{
- printf("Line %d\n", __LINE__);
-}
 		struct stat buff;
 		if(lstat(absolutePath, &buff)==-1 && *(absolutePath+strlen(absolutePath)-1) == '/')
 		{
-		    if(access(".", W_OK)!=-1)
-		    {
-		    printf("LINE 593\n");
-		    mkdir(absolutePath,0777);
-		    }
+		
+		mkdir(absolutePath,0777);
 		}
 		else if(lstat(absolutePath, &buff)==-1)
 		{
@@ -657,11 +627,7 @@ if(debugPrint1)
 			//printf("TempDir: %s\n", tempDir);
 			if(lstat(tempDir, &buff2)==-1)
 			{
-			    if(access(".", W_OK)!=-1)
-			    {
-			    printf("LINE 593\n");
 			    mkdir(tempDir, 0777);
-			    }
 			  //  printf("Making this dir:%s\n", tempDir);
 			}
 			stringTemp = absolutePath+(locationOfSlash-absolutePath)+1;
@@ -671,17 +637,11 @@ if(debugPrint1)
 		}
 		if(*(absolutePath+strlen(absolutePath)-1)!= '/' || S_ISDIR(buff.st_mode)==0)
 		{
-			if((access(absolutePath,W_OK)==-1) || access(".",W_OK)==-1)
-			{
-			    WARN("CANNOT WRITE TO FILE %s\n", absolutePath);
-			}
-			else
-			{
 			FILE *currFile = fopen(absolutePath, "w");
-			printf("HERE\n");	
+			
 			 fputs(fileContents, currFile);
 			 fclose(currFile);
-			}
+			
 		}
 	}
     }
@@ -696,21 +656,12 @@ if(debugPrint1)
 int main(int argc, char**argv)
 {
 
-if(debugPrint1)
-{
-	printf("Arg %s\n", argv[1]);
-}
+
 linkedList *names = linkedListCreate();
 expandNames(argv, argc, names, argv[2]);
-
-if(debugPrint1)
-{
-	printf("Done expanding name for Arg %s\n", argv[1]);
-}
 if(debugPrint1)
 {
 	struct elt *e=names->head;
-	printf("Argument %s:\n", argv[1]);
 	while(e!=0)
 	{
 		printf("Name: %s\n", e->str);
@@ -729,10 +680,6 @@ archiveInformationOrExtraction(argv[2],names,1);
 }
 else if(*argv[1] == 'x')
 {
-if(debugPrint1)
-{
-    printf("IN X\n");
-}
 archiveInformationOrExtraction(argv[2],names,0);
 }
 else{
