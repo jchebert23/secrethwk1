@@ -10,7 +10,7 @@
 #include <linux/limits.h>
 //IMPORTANT AM I ALLOWED TO INCLUDE BELOW LINE
 #include <inttypes.h>
-
+int debugPrint1=0;
 
 typedef struct fileInformation{
     char *fileNameSize;
@@ -387,6 +387,7 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
   while(f != 0)
   {
     //if the absolute path appears in the arguments
+    int fileActuallyDoesntExist=1;
     struct fileInformation *fileInfo = getFileInformation(f);
     if(fileInfo->fileNameSize == 0)
     {
@@ -398,16 +399,19 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
     char *fileContents = fileInfo->fileContent;
     if(searchList(l, absolutePath))
     {
+      fileActuallyDoesntExist=0;	    
       struct stat buff;
       if(dor)
       {
       if(lstat(absolutePath, &buff) == -1)
       {
-	fclose(f);      
-	destroyFileInformation(fileInfo);
-	linkedListDestroy(l);
-        WARN("File %s Does Not Exist", absolutePath);
-	exit(0);
+	struct elt *e= searchList(l, absolutePath);
+	e->flag=1;
+	fileActuallyDoesntExist=1;
+	//linkedListDestroy(l);
+        WARN("File %s Does Not Exist", absolutePath);	
+	//destroyFileInformation(fileInfo);
+	//exit(0);
       }
       else
       {
@@ -441,8 +445,17 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
 
       struct elt *e = searchList(l, absolutePath);
       e->flag=1;
+      e=l->head;
+      while(e!=0)
+      {
+	if(partOfDirectory(e->str, absolutePath))
+	{
+	    e->flag=1;
+	}
+	e=e->next;
+      }
     }
-    else
+    if(fileActuallyDoesntExist)
     {
       
       fprintf(tempFile2, "%ld" , strlen(absolutePath));
@@ -482,9 +495,13 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
     struct stat buff;
     if(lstat(e->str, &buff) ==-1)
     {
-	    linkedListDestroy(l);
+	    if(e->flag==0)
+	    {
 	    WARN("File %s Does Not Exist", e->str);
-	    exit(0);
+	    continue;
+	    }
+	//    linkedListDestroy(l);
+	//    exit(0);
     }
 
     else
@@ -633,7 +650,15 @@ int main(int argc, char**argv)
 
 linkedList *names = linkedListCreate();
 expandNames(argv, argc, names, argv[2]);
-
+if(debugPrint1)
+{
+	struct elt *e=names->head;
+	while(e!=0)
+	{
+		printf("Name: %s\n", e->str);
+		e=e->next;
+	}
+}
 if(*argv[1] == 'r'){ 
   deleteOrReplace(names, argv[2], 1);
 }
