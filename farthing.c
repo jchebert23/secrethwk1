@@ -28,6 +28,7 @@ typedef struct elt {
     struct elt *next;
     char *str;
     int flag;
+    int haveToCauseDeletion;
 }elt;
 
 linkedList *
@@ -42,9 +43,10 @@ linkedListCreate(void)
     return l;
 }
 
-void addToList(struct linkedList *l, char *str)
+void addToList(struct linkedList *l, char *str, int htcd)
 {
 	int flag=0;
+	int haveToCauseDeletion=htcd;
 	struct elt *e;
 	e = malloc(sizeof(struct elt));
 	e->str=str;
@@ -57,6 +59,7 @@ void addToList(struct linkedList *l, char *str)
 	{
 		l->tail->next=e;
 	}
+	e->haveToCauseDeletion=haveToCauseDeletion;
 	e->flag=flag;
 	l->tail=e;
 }
@@ -255,7 +258,7 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
     return fileInfo;
 }
 
-void expandNamesHelper(char *name, struct linkedList *l, char *archiveFileName)
+void expandNamesHelper(char *name, struct linkedList *l, char *archiveFileName, int htcd)
 {
 
       struct stat buff;
@@ -298,7 +301,7 @@ void expandNamesHelper(char *name, struct linkedList *l, char *archiveFileName)
 		*(name + curLength) = '/';
 		*(name + curLength+1)=0;
 		ifDir=1;
-		addToList(l,name);
+		addToList(l,name,htcd);
 		destroyFileInformation(fileInfo);
 		break;
 	    }
@@ -306,7 +309,7 @@ void expandNamesHelper(char *name, struct linkedList *l, char *archiveFileName)
          }
 	if(ifDir==0)
 	{
-	    addToList(l,name);	
+	    addToList(l,name,htcd);	
 	}
 	if(f !=0)
 	{
@@ -315,7 +318,7 @@ void expandNamesHelper(char *name, struct linkedList *l, char *archiveFileName)
       }
       else if(S_ISREG(buff.st_mode))
       {
-        addToList(l,name);
+        addToList(l,name,htcd);
       }
       else if(S_ISDIR(buff.st_mode))
       {
@@ -331,14 +334,14 @@ void expandNamesHelper(char *name, struct linkedList *l, char *archiveFileName)
           strcpy(path, name);
           *(path+strlen(name))= '/';
           strcpy(path+strlen(name)+1, contentOfDir->d_name);
-	  expandNamesHelper(path, l, archiveFileName);
+	  expandNamesHelper(path, l, archiveFileName,0);
         }
         closedir(currdir);
 	int curLength = strlen(name);
 	name = realloc(name, sizeof(char) * (curLength +2));
 	*(name + curLength) = '/';
 	*(name + curLength+1)=0;
-        addToList(l,name);
+        addToList(l,name,htcd);
       }
 
 
@@ -352,7 +355,7 @@ for(int i=3; i<numOfArgs ; i++)
 {
 char *name= malloc(sizeof(char)* (strlen(arguments[i])+1));
 strcpy(name, arguments[i]);
-expandNamesHelper(name, l, archiveFileName);
+expandNamesHelper(name, l, archiveFileName, 1);
 }
 }
 
@@ -400,6 +403,7 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
       {
       if(lstat(absolutePath, &buff) == -1)
       {
+	fclose(f);      
 	destroyFileInformation(fileInfo);
 	linkedListDestroy(l);
         WARN("File %s Does Not Exist", absolutePath);
@@ -455,10 +459,22 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
   //If there were not at least one deletion from command line argument
   if(dor ==0 && l->head != 0)
   {
+	struct elt *e= l->head;
+	while(e!=0)
+	{
+	  if(e->flag==0 && e->haveToCauseDeletion==1)
+	  {
+	  if(f)
+	  {
+	  fclose(f);
+	  }
 	  unlink(temp);
 	  linkedListDestroy(l);
 	  WARN("DID NOT CAUSE AT LEAST ONE DELETION: %s", "");
-	exit(0);
+	  exit(0);
+	  }
+	  e=e->next;
+	}
   }
   //Now at point where add all things that are not currently in the archive
   for(struct elt *e=l->head; e!=0; e=e->next)
