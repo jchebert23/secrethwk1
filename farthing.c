@@ -259,11 +259,17 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
      }
 //    printf("File Size Index: %d\n" , fileSizeIndex);
     fileSize[fileSizeIndex]=0;
-    
-    long long fileSize2= atoi(fileSize);
-    size_t fileSize3 = sizeof(char)*(fileSize2+1);
-    char *fileContents = malloc(fileSize3);
-
+    int fileSize2=atoi(fileSize);
+    char *fileContents;
+    if(atoi(fileSize)>8192)
+    {
+    fileContents = malloc(sizeof(char)*8193);
+    fileSize2=8192;
+    }
+    else
+    {
+    fileContents = malloc(sizeof(char)*fileSize2);
+    }
     if(fileContents == 0)
     {
 	    printf("MALLOC FAILED\n");
@@ -296,8 +302,10 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
     }
     fileContents[contentIndex]=0;
     //getting rid of new line character
+    if(atoi(fileSize)<8192)
+    {
     fgetc(f);
-
+    }
     if(debugPrint2)
     {
 	    printf("Line %d\n", __LINE__);
@@ -327,6 +335,13 @@ void expandNamesHelper(char *name, struct linkedList *l, char *archiveFileName, 
 		    break;
 	    }
 	    
+	int newFileSize2 = atoi(fileInfo->fileSize)-8192;
+      while(newFileSize2>0)
+      {
+	fgetc(f);
+	newFileSize2=newFileSize2-1;
+      }
+      fgetc(f);
 	    int d=strlen(name)-1;
 	    int notEqual=0;
 	    if(strlen(fileInfo->fileName)>=d)
@@ -528,6 +543,20 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
       fclose(NEWCONTENTS);
       fputs("\n", tempFile2);
       }
+
+      if(atoi(fileInfo->fileSize)>=8192)
+      {
+    
+	int newFileSize2 = atoi(fileInfo->fileSize)-8192;
+      while(newFileSize2>0)
+      {
+	fgetc(f);
+	newFileSize2=newFileSize2-1;
+      }
+	fgetc(f); 
+
+
+      }
       }
 
     if(debugPrint2)
@@ -546,6 +575,7 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
 	}
 	e=e->next;
       }
+    
     }
     if(fileActuallyDoesntExist)
     {
@@ -556,7 +586,21 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
       fputs("\n", tempFile2);
       fputs(fileSize, tempFile2);
       fputs("|", tempFile2);
-      fputs(fileContents, tempFile2); 
+      fputs(fileContents, tempFile2);
+      if(atoi(fileInfo->fileSize)>=8192)
+      {
+	int fileChar;
+	int newFileSize = atoi(fileInfo->fileSize)-8192;
+      while(newFileSize>0)
+      {
+	fileChar = fgetc(f);
+        fputc(fileChar, tempFile2);
+	newFileSize=newFileSize-1;
+      }
+     fgetc(f); 
+
+
+      }
       fputs("\n", tempFile2);
     }
 
@@ -686,6 +730,18 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 	if(aoe)
 	{
 	printf("%8d %s\n", atoi(fileSize), absolutePath);
+
+      if(atoi(fileInfo->fileSize)>=8192)
+      {
+    
+	int newFileSize2 = atoi(fileInfo->fileSize)-8192;
+      while(newFileSize2>0)
+      {
+	fgetc(f);
+	newFileSize2=newFileSize2-1;
+      }
+      fgetc(f);
+      }
 	}
 	else
 	{
@@ -736,6 +792,18 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 			if(currFile)
 			{
 			 fputs(fileContents, currFile);
+
+      if(atoi(fileInfo->fileSize)>=8192)
+      {
+    
+	int newFileSize3 = atoi(fileInfo->fileSize)-8192;
+      while(newFileSize3>0)
+      {
+	fputc(fgetc(f), currFile);
+	newFileSize3=newFileSize3-1;
+      }
+      fgetc(f);
+      }
 			 fclose(currFile);
 			}
 			else
