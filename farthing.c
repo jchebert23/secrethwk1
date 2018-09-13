@@ -13,6 +13,7 @@
 int debugPrint1=0;
 int debugPrint2=0;
 int debugPrint3=0;
+int debugPrint6=0;
 typedef struct fileInformation{
     char *fileNameSize;
     char *fileName;
@@ -131,14 +132,24 @@ int partOfDirectory(char *directoryName, char *string)
 
 void isActuallyDirectory(struct elt *e, char *string)
 {
-    int length = strlen(e->str);
+    int length = strlen(e->str)-1;
     int notEqual=0;
-if(length<=strlen(string))
+
+    if(debugPrint6)
+    {
+	    printf("Name argument: %s File Name: %s\n", e->str, string);
+    }
+if(length<strlen(string))
 {
     while(length>=0)
     {
 	    if(e->str[length]!=string[length])
 	    {
+		    
+	    if(debugPrint6)
+	    {
+		    printf("Name arg char: %c, not equal to File Name char: %c at Index%d\n", e->str[length], e->str[length], length);
+	    }
 		    notEqual=1;
 	    }
 	    length=length-1;
@@ -610,8 +621,9 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
 	  fclose(f);
 	  }
 	  unlink(temp);
+
+	  WARN("DID NOT CAUSE AT LEAST ONE DELETION: %s", e->str);
 	  linkedListDestroy(l);
-	  WARN("DID NOT CAUSE AT LEAST ONE DELETION: %s", "");
 	  exit(0);
 	  }
 	  e=e->next;
