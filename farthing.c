@@ -275,6 +275,8 @@ void expandNamesHelper(char *name, struct linkedList *l, char *archiveFileName)
 	    
 	    int d=strlen(name)-1;
 	    int notEqual=0;
+	    if(strlen(fileInfo->fileName)>=d)
+	    {
 	    while(d>=0)
 	    {
 		if(name[d]!=fileInfo->fileName[d])
@@ -282,6 +284,11 @@ void expandNamesHelper(char *name, struct linkedList *l, char *archiveFileName)
 		    notEqual=1;
 		}
 		d=d-1;
+	    }
+	    }
+	    else
+	    {
+		notEqual=1;
 	    }
 	    if(notEqual==0 && fileInfo->fileName[strlen(name)]== '/')
 	    {
@@ -301,8 +308,10 @@ void expandNamesHelper(char *name, struct linkedList *l, char *archiveFileName)
 	{
 	    addToList(l,name);	
 	}
+	if(f !=0)
+	{
 	fclose(f);
-  
+	}
       }
       else if(S_ISREG(buff.st_mode))
       {
@@ -547,7 +556,6 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 		if(lstat(absolutePath, &buff)==-1 && *(absolutePath+strlen(absolutePath)-1) == '/')
 		{
 		
-		printf("making directory when absolutePath is %s\n", absolutePath);
 		mkdir(absolutePath,0777);
 		}
 		else if(lstat(absolutePath, &buff)==-1)
@@ -577,7 +585,6 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 			//printf("TempDir: %s\n", tempDir);
 			if(lstat(tempDir, &buff2)==-1)
 			{
-			    printf("making directory %s, when absolutePath is %s\n", tempDir, absolutePath);
 			    mkdir(tempDir, 0777);
 			  //  printf("Making this dir:%s\n", tempDir);
 			}
@@ -586,7 +593,7 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 			}
 
 		}
-		if(!S_ISDIR(buff.st_mode))
+		if(*(absolutePath+strlen(absolutePath)-1)!= '/' || S_ISDIR(buff.st_mode)==0)
 		{
 			FILE *currFile = fopen(absolutePath, "w");
 			
