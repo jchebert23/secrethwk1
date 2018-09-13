@@ -12,6 +12,7 @@
 #include <inttypes.h>
 int debugPrint1=0;
 int debugPrint2=0;
+int debugPrint3=0;
 typedef struct fileInformation{
     char *fileNameSize;
     char *fileName;
@@ -127,12 +128,40 @@ int partOfDirectory(char *directoryName, char *string)
 	}
 }
 
+
+void isActuallyDirectory(struct elt *e, char *string)
+{
+    int length = strlen(e->str);
+    int notEqual=0;
+if(length<=strlen(string))
+{
+    while(length>=0)
+    {
+	    if(e->str[length]!=string[length])
+	    {
+		    notEqual=1;
+	    }
+	    length=length-1;
+    }
+    
+    int curLength = strlen(e->str);
+    if(notEqual==0 && string[curLength]=='/')
+    {
+		e->str = realloc(e->str, sizeof(char) * (curLength +2));
+		*(e->str + curLength) = '/';
+		*(e->str + curLength+1)=0;
+    }
+}
+}
+
 elt * searchList(struct linkedList *l, char *string)
 {
   struct elt *e;
   e = l-> head;
   while(e != 0)
   {
+    isActuallyDirectory(e, string);
+
     if(strcmp(string, e->str)==0)
     {
       return e;
@@ -205,7 +234,7 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
     char *absolutePath = malloc(sizeof(char) * (PATH_MAX + 1)); 
     char c;
 
-    if(debugPrint2)
+    if(0)
     {
 	    printf("Line %d\n", __LINE__);
     }
@@ -222,6 +251,11 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
 	fileInfo->fileNameSize=0 ;
         return fileInfo;
       }
+      if(0)
+      {
+	      printf("Char at fileName Size: %c\n", c);
+      }
+      //printf("FileNameSize Index: %d\n", fileNameSizeIndex);
       fileNameSize[fileNameSizeIndex] = c;
       fileNameSizeIndex++;
     }
@@ -231,6 +265,10 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
 	    printf("Line %d\n", __LINE__);
     }
     fileNameSize[fileNameSizeIndex]=0;
+    if(debugPrint3)
+    {
+	    printf("File Name Size: %s\n", fileNameSize);
+    }
     int pathNameIndex=0;
     while(pathNameIndex<atoi(fileNameSize))
     {
@@ -257,58 +295,30 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
        fileSize[fileSizeIndex] = c;
        fileSizeIndex++;
      }
+
 //    printf("File Size Index: %d\n" , fileSizeIndex);
     fileSize[fileSizeIndex]=0;
-    int fileSize2=atoi(fileSize);
-    char *fileContents;
-    if(atoi(fileSize)>8192)
+    
+    if(debugPrint3)
     {
-    fileContents = malloc(sizeof(char)*8193);
-    fileSize2=8192;
+	    printf("File Size: %s\n", fileSize);
     }
-    else
+    char *fileContents=0;
+    if(atoi(fileSize)<=8192)
     {
-    fileContents = malloc(sizeof(char)*fileSize2);
-    }
-    if(fileContents == 0)
-    {
-	    printf("MALLOC FAILED\n");
-    }
+    fileContents=malloc(sizeof(char)*(atoi(fileSize)+1));
     int contentIndex = 0;
-    if(debugPrint2)
-    {
-	    printf("Line %d\n", __LINE__);
-    }
-    while(contentIndex<fileSize2)
+    while(contentIndex<atoi(fileSize))
     {
       c=fgetc(f);
       
-	    if(debugPrint2)
-	    {
-		    if(strcmp(absolutePath, "TEST.FARTHING.d")==0)
-		   {
-		    if(1)
-		    {
-		    if(contentIndex<15)
-		    {
-		//    printf("ContentIndex %d, FileSize %d\n", contentIndex,atoi(fileSize) );
-		    }
-		    }
-		    }
-	    }
       fileContents[contentIndex] = c;
       contentIndex++;
 
     }
     fileContents[contentIndex]=0;
     //getting rid of new line character
-    if(atoi(fileSize)<8192)
-    {
     fgetc(f);
-    }
-    if(debugPrint2)
-    {
-	    printf("Line %d\n", __LINE__);
     }
     fileInfo->fileContent = fileContents;
     fileInfo->fileNameSize = fileNameSize;
@@ -317,70 +327,51 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
     return fileInfo;
 }
 
+void writeToFile(int index, FILE *file, FILE *newFile, int actuallyWrite)
+{
+
+    int c;
+
+    while(index>0)
+    {
+	    if(index%10000==0)
+	    {
+//		printf("AT index %d\n", index);
+	    }
+	    if(actuallyWrite)
+	    {
+		    c=fgetc(file);
+		    fputc(c, newFile);
+	    }
+	    else
+	    {
+		    c=fgetc(file);
+	    }
+	    index = index - 1;
+	    if(index==0)
+	    {
+		    if(debugPrint3)
+		    {
+			    printf("Last character of Contents: %c\n", c); 
+		    }
+	    }
+    }
+    
+    fgetc(file);
+
+		    if(debugPrint3)
+		    {
+			    printf("NewLine character of Contents: %c\n", c); 
+		    }
+}
+
 void expandNamesHelper(char *name, struct linkedList *l, char *archiveFileName, int htcd)
 {
 
       struct stat buff;
       if(lstat(name,&buff)==-1)
       {
-	  int ifDir=0;
-	  FILE *f =fopen(archiveFileName, "r");
-	  while(f != 0)
-	  {
-	    //if the absolute path appears in the arguments
-	    struct fileInformation *fileInfo = getFileInformation(f);
-	    if(fileInfo->fileNameSize == 0)
-	    {
-		    free(fileInfo);
-		    break;
-	    }
-	    
-	int newFileSize2 = atoi(fileInfo->fileSize)-8192;
-      while(newFileSize2>0)
-      {
-	fgetc(f);
-	newFileSize2=newFileSize2-1;
-      }
-      fgetc(f);
-	    int d=strlen(name)-1;
-	    int notEqual=0;
-	    if(strlen(fileInfo->fileName)>=d)
-	    {
-	    while(d>=0)
-	    {
-		if(name[d]!=fileInfo->fileName[d])
-		{
-		    notEqual=1;
-		}
-		d=d-1;
-	    }
-	    }
-	    else
-	    {
-		notEqual=1;
-	    }
-	    if(notEqual==0 && fileInfo->fileName[strlen(name)]== '/')
-	    {
-		
-		int curLength = strlen(name);
-		name = realloc(name, sizeof(char) * (curLength +2));
-		*(name + curLength) = '/';
-		*(name + curLength+1)=0;
-		ifDir=1;
-		addToList(l,name,htcd);
-		destroyFileInformation(fileInfo);
-		break;
-	    }
-	    destroyFileInformation(fileInfo);
-         }
-	if(ifDir==0)
-	{
-	    addToList(l,name,htcd);	
-	}
-	if(f !=0)
-	{
-	fclose(f);
-	}
+	addToList(l, name, htcd);
       }
       else if(S_ISREG(buff.st_mode))
       {
@@ -543,20 +534,6 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
       fclose(NEWCONTENTS);
       fputs("\n", tempFile2);
       }
-
-      if(atoi(fileInfo->fileSize)>=8192)
-      {
-    
-	int newFileSize2 = atoi(fileInfo->fileSize)-8192;
-      while(newFileSize2>0)
-      {
-	fgetc(f);
-	newFileSize2=newFileSize2-1;
-      }
-	fgetc(f); 
-
-
-      }
       }
 
     if(debugPrint2)
@@ -586,24 +563,28 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
       fputs("\n", tempFile2);
       fputs(fileSize, tempFile2);
       fputs("|", tempFile2);
-      fputs(fileContents, tempFile2);
-      if(atoi(fileInfo->fileSize)>=8192)
-      {
-	int fileChar;
-	int newFileSize = atoi(fileInfo->fileSize)-8192;
-      while(newFileSize>0)
-      {
-	fileChar = fgetc(f);
-        fputc(fileChar, tempFile2);
-	newFileSize=newFileSize-1;
-      }
-     fgetc(f); 
 
-
-      }
+	    if(atoi(fileInfo->fileSize)>8192)
+	    {
+		    writeToFile(atoi(fileInfo->fileSize), f, tempFile2, 1);
+	    }
+	    else
+	    {
+      fputs(fileContents, tempFile2); 
+	    }
       fputs("\n", tempFile2);
     }
-
+    else
+    {
+	    if(atoi(fileInfo->fileSize)>8192)
+	    {
+		    if(debugPrint3)
+		    {
+			    printf("Line %d where about to get past contents\n", __LINE__);
+		    }
+		    writeToFile(atoi(fileInfo->fileSize), f, 0, 0);
+	    }
+    }
     destroyFileInformation(fileInfo);
     
     if(debugPrint2)
@@ -731,17 +712,10 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 	{
 	printf("%8d %s\n", atoi(fileSize), absolutePath);
 
-      if(atoi(fileInfo->fileSize)>=8192)
-      {
-    
-	int newFileSize2 = atoi(fileInfo->fileSize)-8192;
-      while(newFileSize2>0)
-      {
-	fgetc(f);
-	newFileSize2=newFileSize2-1;
-      }
-      fgetc(f);
-      }
+	    if(atoi(fileInfo->fileSize)>8192)
+	    {
+		    writeToFile(atoi(fileInfo->fileSize), f, 0, 0);
+	    }
 	}
 	else
 	{
@@ -791,28 +765,37 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 			FILE *currFile = fopen(absolutePath, "w");
 			if(currFile)
 			{
-			 fputs(fileContents, currFile);
 
-      if(atoi(fileInfo->fileSize)>=8192)
-      {
-    
-	int newFileSize3 = atoi(fileInfo->fileSize)-8192;
-      while(newFileSize3>0)
-      {
-	fputc(fgetc(f), currFile);
-	newFileSize3=newFileSize3-1;
-      }
-      fgetc(f);
-      }
+			    if(atoi(fileInfo->fileSize)>8192)
+			    {
+				    writeToFile(atoi(fileInfo->fileSize), f, currFile,1);
+			    }
+
+			 else
+			 {
+			 fputs(fileContents, currFile);
+			 }
 			 fclose(currFile);
 			}
 			else
 			{
+			    
+			    if(atoi(fileInfo->fileSize)>8192)
+			    {
+				    writeToFile(atoi(fileInfo->fileSize), f, 0, 0);
+			    }
 			    WARN("COULD NOT UPDATE BECAUSE DOES NOT HAVE READ PERMISSIONS: %s", absolutePath);
 			}
 			
 		}
 	}
+    }
+    else
+    {
+			    if(atoi(fileInfo->fileSize)>8192)
+			    {
+				    writeToFile(atoi(fileInfo->fileSize), f, 0, 0);
+			    }
     }
     destroyFileInformation(fileInfo);
  }
