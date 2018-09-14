@@ -415,14 +415,51 @@ void expandNamesHelper(char *name, struct linkedList *l, char *archiveFileName, 
 
 }
 
+char * removeSlashes(char *string)
+{
+	int length=strlen(string)-1;
+	int numOfSlashes=0;
+	for(int x=0; x<length-1;x++)
+	{
+		if(string[x]=='/' && string[x+1]=='/')
+		{
+		    WARN("TWO CONSECUTIVE SLASH: %s", string);
+		    return 0;
+		}
+	}
+	while(string[length]=='/')
+	{
+	    
+	    length=length-1;
+	    numOfSlashes++;
+	    if(length==-1)
+	    {
+		    WARN("Improper Name argument%s", string);
+		    return 0;
+	    }
+	}
+	int newLength = strlen(string) + 1- numOfSlashes;
+	char *name = malloc(sizeof(char)*newLength);
+	for(int i=0; i<newLength-1; i++)
+	{
+		name[i]=string[i];
+	}
+	name[newLength-1]='\0';
+	return name;
 
+}
 
 void expandNames(char **arguments, int numOfArgs, struct linkedList *l, char *archiveFileName)
 {  
 for(int i=3; i<numOfArgs ; i++)
 {
-char *name= malloc(sizeof(char)* (strlen(arguments[i])+1));
-strcpy(name, arguments[i]);
+//char *name= malloc(sizeof(char)* (strlen(arguments[i])+1));
+//strcpy(name, arguments[i]);
+char *name=removeSlashes(arguments[i]);
+if(name==0)
+{
+	continue;
+}
 expandNamesHelper(name, l, archiveFileName, 1);
 }
 }
@@ -616,16 +653,10 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
 	{
 	  if(e->flag==0 && e->haveToCauseDeletion==1)
 	  {
-	  if(f)
-	  {
-	  fclose(f);
-	  }
-	  unlink(temp);
 
 	  WARN("DID NOT CAUSE AT LEAST ONE DELETION: %s", e->str);
-	  linkedListDestroy(l);
-	  exit(0);
 	  }
+	  e->flag=1;
 	  e=e->next;
 	}
   }
@@ -640,8 +671,6 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
 	    WARN("File %s Does Not Exist", e->str);
 	    continue;
 	    }
-	//    linkedListDestroy(l);
-	//    exit(0);
     }
 
     else
@@ -674,7 +703,6 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
 	      fputs("0|\n",tempFile2);
       }
       }
-//HAVE TO REMOVE THESE ITEMS
     }
   }
   if(strcmp(archiveFileName, "-"))
@@ -736,6 +764,8 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 		{
 		
 		mkdir(absolutePath,0777);
+		
+		
 		}
 		else if(lstat(absolutePath, &buff)==-1)
 		{
@@ -759,13 +789,12 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 			}
 			numOfChars = locationOfSlash-absolutePath;
 			tempDir[numOfChars]= '\0';
-		//	tempDir = (char *)memcpy(tempDir,absolutePath,sizeof(char)*(locationOfSlash-absolutePath+1));
-			//tempDir[strlen(tempDir)]='\0';
-			//printf("TempDir: %s\n", tempDir);
 			if(lstat(tempDir, &buff2)==-1)
 			{
-			    mkdir(tempDir, 0777);
-			  //  printf("Making this dir:%s\n", tempDir);
+
+				mkdir(absolutePath,0777);
+				
+				
 			}
 			stringTemp = absolutePath+(locationOfSlash-absolutePath)+1;
 			free(tempDir);
