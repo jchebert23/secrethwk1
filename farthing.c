@@ -450,16 +450,12 @@ char * removeSlashes(char *string)
 }
 
 void expandNames(char **arguments, int numOfArgs, struct linkedList *l, char *archiveFileName)
-{  
+{
+
 for(int i=3; i<numOfArgs ; i++)
 {
-//char *name= malloc(sizeof(char)* (strlen(arguments[i])+1));
-//strcpy(name, arguments[i]);
-char *name=removeSlashes(arguments[i]);
-if(name==0)
-{
-	continue;
-}
+char *name= malloc(sizeof(char)* (strlen(arguments[i])+1));
+strcpy(name, arguments[i]);
 expandNamesHelper(name, l, archiveFileName, 1);
 }
 }
@@ -653,10 +649,16 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
 	{
 	  if(e->flag==0 && e->haveToCauseDeletion==1)
 	  {
+	  if(f)
+	  {
+	  fclose(f);
+	  }
+	  unlink(temp);
 
 	  WARN("DID NOT CAUSE AT LEAST ONE DELETION: %s", e->str);
+	  linkedListDestroy(l);
+	  exit(0);
 	  }
-	  e->flag=1;
 	  e=e->next;
 	}
   }
@@ -671,6 +673,8 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
 	    WARN("File %s Does Not Exist", e->str);
 	    continue;
 	    }
+	//    linkedListDestroy(l);
+	//    exit(0);
     }
 
     else
@@ -703,6 +707,7 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
 	      fputs("0|\n",tempFile2);
       }
       }
+//HAVE TO REMOVE THESE ITEMS
     }
   }
   if(strcmp(archiveFileName, "-"))
@@ -764,8 +769,6 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 		{
 		
 		mkdir(absolutePath,0777);
-		
-		
 		}
 		else if(lstat(absolutePath, &buff)==-1)
 		{
@@ -789,12 +792,13 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 			}
 			numOfChars = locationOfSlash-absolutePath;
 			tempDir[numOfChars]= '\0';
+		//	tempDir = (char *)memcpy(tempDir,absolutePath,sizeof(char)*(locationOfSlash-absolutePath+1));
+			//tempDir[strlen(tempDir)]='\0';
+			//printf("TempDir: %s\n", tempDir);
 			if(lstat(tempDir, &buff2)==-1)
 			{
-
-				mkdir(absolutePath,0777);
-				
-				
+			    mkdir(tempDir, 0777);
+			  //  printf("Making this dir:%s\n", tempDir);
 			}
 			stringTemp = absolutePath+(locationOfSlash-absolutePath)+1;
 			free(tempDir);
@@ -876,7 +880,9 @@ else if(*argv[1] == 'x')
 archiveInformationOrExtraction(argv[2],names,0);
 }
 else{
-printf("Improper Command Entered\n");
+WARN("Improper Command Entered\n");
+
+linkedListDestroy(names);
 exit(0);
 }
 linkedListDestroy(names);
