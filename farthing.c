@@ -50,6 +50,49 @@ void addToList(struct linkedList *l, char *str, int htcd)
 	int flag=0;
 	int haveToCauseDeletion=htcd;
 	struct elt *e;
+	struct elt *otherElts=l->head;
+	int otherEltSame=0;
+	while(otherElts!=0)
+	{
+		if(strcmp(str, otherElts->str)==0)
+		{
+		    otherEltSame=1;
+		    break;
+		}
+		else
+		{
+		    int length=strlen(str)-1;
+		    int notEqual=0;
+		    if(length<strlen(otherElts->str))
+		    {
+
+		    
+		    while(length>-1)
+		    {
+			if(str[length]!=otherElts->str[length])
+			{
+				notEqual=1;
+				break;
+			}
+			length=length-1;
+		    }
+		    }
+		    else
+		    {
+			    notEqual=1;
+		    }
+		    if(notEqual==0 && otherElts->str[strlen(str)]=='/')
+		    {
+			    otherEltSame=1;
+			    break;
+		    }
+		    
+
+		}
+		otherElts=otherElts->next;
+	}
+	if(otherEltSame==0)
+	{
 	e = malloc(sizeof(struct elt));
 	e->str=str;
 	e->next=0;
@@ -64,6 +107,7 @@ void addToList(struct linkedList *l, char *str, int htcd)
 	e->haveToCauseDeletion=haveToCauseDeletion;
 	e->flag=flag;
 	l->tail=e;
+	}
 }
 
 
@@ -880,7 +924,7 @@ else if(*argv[1] == 'x')
 archiveInformationOrExtraction(argv[2],names,0);
 }
 else{
-WARN("Improper Command Entered\n");
+WARN("Improper Command Entered: %s", argv[1]);
 
 linkedListDestroy(names);
 exit(0);
