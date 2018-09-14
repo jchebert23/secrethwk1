@@ -10,10 +10,7 @@
 #include <linux/limits.h>
 //IMPORTANT AM I ALLOWED TO INCLUDE BELOW LINE
 #include <inttypes.h>
-int debugPrint1=0;
-int debugPrint2=0;
-int debugPrint3=0;
-int debugPrint6=0;
+#include <errno.h>
 typedef struct fileInformation{
     char *fileNameSize;
     char *fileName;
@@ -157,7 +154,6 @@ int partOfDirectory(char *directoryName, char *string)
 	{
 		if(string[length] != directoryName[length])
 		{
-			printf("%s is not apart of directory %s\n", string, directoryName);
 			return 0;
 		}
 	length=length-1;
@@ -179,10 +175,6 @@ void isActuallyDirectory(struct elt *e, char *string, linkedList *l)
     int length = strlen(e->str)-1;
     int notEqual=0;
 
-    if(debugPrint6)
-    {
-	    printf("Name argument: %s File Name: %s\n", e->str, string);
-    }
 if(length<strlen(string))
 {
     while(length>=0)
@@ -190,10 +182,6 @@ if(length<strlen(string))
 	    if(e->str[length]!=string[length])
 	    {
 		    
-	    if(debugPrint6)
-	    {
-		    printf("Name arg char: %c, not equal to File Name char: %c at Index%d\n", e->str[length], e->str[length], length);
-	    }
 		    notEqual=1;
 	    }
 	    length=length-1;
@@ -347,15 +335,7 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
       fileNameSizeIndex++;
     }
     
-    if(debugPrint2)
-    {
-	    printf("Line %d\n", __LINE__);
-    }
     fileNameSize[fileNameSizeIndex]=0;
-    if(debugPrint3)
-    {
-	    printf("File Name Size: %s\n", fileNameSize);
-    }
     int pathNameIndex=0;
     while(pathNameIndex<atoi(fileNameSize))
     {
@@ -380,10 +360,6 @@ struct fileInformation *fileInfo= malloc(sizeof(struct fileInformation));
 
     fileSize[fileSizeIndex]=0;
     
-    if(debugPrint3)
-    {
-	    printf("File Size: %s\n", fileSize);
-    }
     char *fileContents=0;
     if(atoi(fileSize)<=8192)
     {
@@ -431,19 +407,11 @@ void writeToFile(long long index, FILE *file, FILE *newFile, int actuallyWrite)
 	    index = index - 1;
 	    if(index==0)
 	    {
-		    if(debugPrint3)
-		    {
-			    printf("Last character of Contents: %c\n", c); 
-		    }
 	    }
     }
     
     fgetc(file);
 
-		    if(debugPrint3)
-		    {
-			    printf("NewLine character of Contents: %c\n", c); 
-		    }
 }
 
 void expandNamesHelper(char *name, struct linkedList *l, char *archiveFileName, int htcd)
@@ -678,10 +646,6 @@ void deleteOrReplace(struct linkedList *l, char *archiveFileName, int dor){
     {
 	    if(atoi(fileInfo->fileSize)>8192)
 	    {
-		    if(debugPrint3)
-		    {
-			    printf("Line %d where about to get past contents\n", __LINE__);
-		    }
 		    writeToFile(atoi(fileInfo->fileSize), f, 0, 0);
 	    }
     }
@@ -815,6 +779,10 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 		{
 		
 		mkdir(absolutePath,0777);
+		if(errno == EACCES)
+		{
+			WARN("COULD NOT MAKE DIRECTORY%s\n", absolutePath);
+		}
 		}
 		else if(lstat(absolutePath, &buff)==-1)
 		{
@@ -838,12 +806,14 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 			}
 			numOfChars = locationOfSlash-absolutePath;
 			tempDir[numOfChars]= '\0';
-		//	tempDir = (char *)memcpy(tempDir,absolutePath,sizeof(char)*(locationOfSlash-absolutePath+1));
-			//tempDir[strlen(tempDir)]='\0';
-			//printf("TempDir: %s\n", tempDir);
 			if(lstat(tempDir, &buff2)==-1)
 			{
 			    mkdir(tempDir, 0777);
+
+				if(errno == EACCES)
+				{
+					WARN("COULD NOT MAKE DIRECTORY%s\n", absolutePath);
+				}
 			  //  printf("Making this dir:%s\n", tempDir);
 			}
 			stringTemp = absolutePath+(locationOfSlash-absolutePath)+1;
@@ -898,19 +868,8 @@ void archiveInformationOrExtraction(char *archiveName, linkedList *names, int ao
 
 int main(int argc, char**argv)
 {
-
-
 linkedList *names = linkedListCreate();
 expandNames(argv, argc, names, argv[2]);
-if(0)
-{
-	struct elt *e=names->head;
-	while(e!=0)
-	{
-		printf("Name: %s\n", e->str);
-		e=e->next;
-	}
-}
 if(*argv[1] == 'r'){ 
   deleteOrReplace(names, argv[2], 1);
 }
